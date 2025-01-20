@@ -1,14 +1,28 @@
 import os
 
 from dotenv import load_dotenv
-from openai import client
+from openai import OpenAI
 
-from .agent import Agent
-from .tools import execute_tool_call, function_to_schema
+client = OpenAI()
+
+from agent import Agent
+from tools import execute_tool_call, function_to_schema
 
 load_dotenv()
 
-LLM_MODEL = os.get("LLM_MODEL", "gpt-4o-mini")
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+
+SYSTEM_MESSAGE = (
+    "You are a customer support agent for ACME Inc."
+    "Always answer in a sentence or less."
+    "Follow the following routine with the user:"
+    "1. First, ask probing questions and understand the user's problem deeper.\n"
+    " - unless the user has already provided a reason.\n"
+    "2. Propose a fix (make one up).\n"
+    "3. ONLY if not satesfied, offer a refund.\n"
+    "4. If accepted, search for the ID and then execute refund."
+    ""
+)
 
 
 def run_full_turn(system_message, messages):
@@ -53,7 +67,7 @@ def run_full_turn_agent(agent: Agent, messages):
     messages = messages.copy()
     while True:
         tool_schemas = [function_to_schema(tool) for tool in agent.tools]
-        tools_map = {tool.__name: tool for tool in agent.tools}
+        tools_map = {tool.__name__: tool for tool in agent.tools}
         response = client.chat.completions.create(
             model=agent.model,
             messages=[{"role": "system", "content": agent.instructions}] + messages,
@@ -63,7 +77,7 @@ def run_full_turn_agent(agent: Agent, messages):
         messages.append(message)
         if message.content:
             print("Assistant:", message.content)
-        if not message.tool_call:
+        if not message.tool_calls:
             break
         for tool_call in message.tool_calls:
             result = execute_tool_call(tool_call, tools_map)

@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 
 load_dotenv()
-LLM_MODEL = os.get("LLM_MODEL", "gpt-4o-mini")
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
 
 
 class Agent(BaseModel):
