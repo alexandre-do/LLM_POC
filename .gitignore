@@ -8,3 +8,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 .env
+.python*
+
+# Cache
+__pycache__

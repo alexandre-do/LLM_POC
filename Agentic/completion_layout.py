@@ -4,9 +4,11 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 client = OpenAI()
+from typing import Optional
 
 from agent import Agent
-from tools import execute_tool_call, function_to_schema
+from pydantic import BaseModel
+from tools import execute_tool_call, execute_tool_call_handoff, function_to_schema
 
 load_dotenv()
 
@@ -23,6 +25,11 @@ SYSTEM_MESSAGE = (
     "4. If accepted, search for the ID and then execute refund."
     ""
 )
+
+
+class Response(BaseModel):
+    agent: Optional[Agent]
+    messages: list
 
 
 def run_full_turn(system_message, messages):
@@ -89,3 +96,39 @@ def run_full_turn_agent(agent: Agent, messages):
             messages.append(result_msg)
 
     return messages[num_init_messages:]
+
+
+def run_full_turn_agent_handoff(agent, messages):
+    current_agent = agent
+    num_init_messages = len(messages)
+    messages = messages.copy()
+    while True:
+        tool_schemas = [function_to_schema(tool) for tool in current_agent.tools]
+        tools = {tool.__name__: tool for tool in current_agent.tools}
+        response = client.chat.completions.create(
+            model=agent.model,
+            messages=[{"role": "system", "content": current_agent.instructions}]
+            + messages,
+            tools=tool_schemas or None,
+        )
+        message = response.choices[0].message
+        messages.append(message)
+
+        if message.content:
+            print(f"{current_agent.name}:", message.content)
+        if not message.tool_calls:
+            break
+        for tool_call in message.tool_calls:
+            result = execute_tool_call_handoff(tool_call, tools, current_agent.name)
+            if isinstance(result, Agent):
+                current_agent = result
+                result = (
+                    f"Transfered to {current_agent.name}. Adopt persona immediately."
+                )
+            result_message = {
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": result,
+            }
+            messages.append(result_message)
+    return Response(agent=current_agent, messages=messages[num_init_messages:])
