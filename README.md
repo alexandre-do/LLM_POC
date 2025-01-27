@@ -7,7 +7,7 @@
 ## 📚 Purpose
 
 The goal of this repository is to explore and evaluate the potential of LLMs in addressing multi-modal and agentic approche. By testing various models and techniques, this project aims to provide insights into the following:
-
+- Application of agentic approache.
 - Application of LLMs for text-to-sql, text-to-image, chat conversation ...
 - Comparative performance of different LLM architectures and configurations.
 - Experimentation with fine-tuning and model integration for solving domain-specific tasks.
